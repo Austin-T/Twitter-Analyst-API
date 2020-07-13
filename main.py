@@ -5,6 +5,8 @@ from secretKeys import *
 import tweepy
 import random
 from datetime import datetime
+from textblob import TextBlob
+
 
 # Connect to the twitter API using consumer/access keys/secrets
 auth = tweepy.OAuthHandler(CONSUMER_KEY, CONSUMER_SECRET)
@@ -51,6 +53,34 @@ def getDateString(date):
     dateString = date.strftime("%B %d")
     return dateString
 
+def percentage(part, whole):
+    # This function calculates a percentage given the 'part' (numerator) and the
+    # 'whole' (denominator)
+    percentage = 100 * float(part) / float(whole)
+    return percentage
+
+def getPolarity(tweets):
+    # This function calculates the positive, neutral, and negative polarity of a set of 
+    # tweets recieved from the twitter API. The total percentage of positive, negative,
+    # and neutral tweets are returned as integers in a tuple.
+
+    positive = 0
+    neutral = 0
+    negative = 0
+
+    for tweet in tweets:
+        analysis = TextBlob(tweet.text)
+        polarity = analysis.sentiment.polarity
+
+        if polarity > 0:
+            positive += 1
+        elif polarity < 0:
+            negative += 1
+        else:
+            neutral += 1
+
+    return (positive, neutral, negative)
+
 # Define classes/methods for handling client requests
 class HelloWorld(Resource):
     def get(self):
@@ -66,19 +96,6 @@ class UserData(Resource):
             return
 
         rawData = rawData.__dict__
-
-        # get user information
-        # avatarURL = rawData['profile_image_url_https']
-        # name = rawData['name']
-        # screenName = rawData['screen_name']
-        # location = rawData['location']
-        # url = rawData['url']    
-        # createdAt = rawData['created_at']
-        # createdAt = "2014-02-05T23:22:59Z"
-        # followersCount = rawData['followers_count']
-        # followingCount = rawData['friends_count']
-        # tweetsCount = rawData['statuses_count']
-        
 
         # return the user information
         return {
@@ -106,81 +123,37 @@ class UserTweets(Resource):
         allTweets = []
 
         for status in rawData:
-            # print(status.__dict__.keys())
             dictionary = status.__dict__
-
-            # # isolate the first hashtag which appears in the text
-            # index1 = -1
-            # index2 = -1
-            # for i in range(0, len(dictionary['text'])):
-            #     if dictionary['text'][i] == '#':
-            #         index1 = i
-            #     elif dictionary['text'][i] == ' ':
-            #         if index1 != -1:
-            #             index2 = i + 1
-            #             break
-
-            # if index1 == -1:
-            #     hashtag = ''
-            # else:
-            #     hashtag = dictionary['text'][index1:index2]
 
             tempDict = {
                 "body": dictionary["text"],
                 "retweets": dictionary["retweet_count"],
                 "likes": dictionary["favorite_count"],
-                # "createdAt": dictionary["created_at"],
                 "date": getDateString(dictionary['created_at']),
                 "id": dictionary["id"],
                 "feedback": random.randint(0, 100),
                 "hashtag": getHashtag(dictionary['text'])
             }
             allTweets.append(tempDict)
-            # print(dictionary["created_at"], ",", type(dictionary["created_at"]))
 
-        # print(allTweets)
         return allTweets
-        # rawData = rawData.__dict__
-
-        # # get tweet information
-        # avatarURL = rawData['profile_image_url_https']
-        # name = rawData['name']
-        # screenName = rawData['screen_name']
-        # location = rawData['location']
-        # url = rawData['url']    
-        # createdAt = rawData['created_at']
-        # createdAt = "2014-02-05T23:22:59Z"
-        # followersCount = rawData['followers_count']
-        # followingCount = rawData['friends_count']
-        # tweetsCount = rawData['statuses_count']
-
-        # # return the user information
-        # return {
-        #     "avatarURL": avatarURL,
-        #     "name": name,
-        #     "screenName": screenName,
-        #     "location": location,
-        #     "url": url,
-        #     "createdAt": createdAt,
-        #     "followersCount": followersCount,
-        #     "followingCount": followingCount,
-        #     "tweetsCount": tweetsCount,
-        # }
 
 class UserStats(Resource):
     def get(self, username):
-        # Query the twitter API to get a result set containing the users 20 most recent tweets
-        # try:
-        #     rawData = twitterAPI.user_timeline(username)
+        # Query the twitter API to get a result set containing the users 100 most recent mentions
 
-        # except:
-        #     # user not found. return null
-        #     return
+        searchTerm = username
+        numberOfSearches = 100
+
+        # get the tweets from the twitter API
+        tweets = tweepy.Cursor(twitterAPI.search, q=searchTerm).items(numberOfSearches)
+
+        polarity = getPolarity(tweets)
 
         return [
-            { "label": 'Positive', "value": 24, "color": '#89e051' },
-            { "label": 'Neutral', "value": 16, "color": '#f1e05a' },
-            { "label": 'Negative', "value": 7, "color": '#e34c26' },
+            { "label": 'Positive', "value": polarity[0], "color": '#89e051' },
+            { "label": 'Neutral', "value": polarity[1], "color": '#f1e05a' },
+            { "label": 'Negative', "value": polarity[2], "color": '#e34c26' },
         ]
 
 

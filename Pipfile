@@ -9,6 +9,8 @@ verify_ssl = true
 flask = "*"
 flask-restful = "*"
 tweepy = "*"
+matplotlib = "*"
+textblob = "*"
 
 [requires]
 python_version = "3.6"
