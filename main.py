@@ -81,6 +81,39 @@ def getPolarity(tweets):
 
     return (positive, neutral, negative)
 
+# def getAllResponses(tweetID, username):
+#     # This function returnes ever tweet which has been issued to a user in response
+#     # to one of their messages
+
+def getReplyPolarity(tweetID, responses):
+    # This function calculates the positive, neutral, and negative polarity of a set of 
+    # tweets that have been posted in reponse to the given 'tweet'. The percentage of 
+    # positive polarities is returned
+
+    # # Find all tweets which have been posted in response to any tweet of the user
+    # toString = "to:" + username
+    # responses = tweepy.Cursor(twitterAPI.search, q=toString, since_id=tweetID).items(100)
+
+    # Create a subset of all responses which were directed at the specific tweet we are looking at
+    replies = []
+    for response in responses:
+        if response.in_reply_to_status_id == tweetID:
+            replies.append(response)
+
+    # print(replies)
+    if replies == []:
+        # There are no replies to the given tweet so we return 999
+        return 999
+    else:
+        # Find the total amount of positive replies, and the total amount of positive and negative
+        # replies combined
+        polarity = getPolarity(replies)
+        total = 2 * (polarity[0] + polarity[1] + polarity[2])
+        positive = 2 * polarity[0] + polarity[1]
+
+        # return the total percentage of positive replies
+        return percentage(positive, total)
+
 # Define classes/methods for handling client requests
 class HelloWorld(Resource):
     def get(self):
@@ -113,28 +146,75 @@ class UserData(Resource):
 class UserTweets(Resource):
     def get(self, username):
         # Query the twitter API to get a result set containing the users 20 most recent tweets
-        try:
-            rawData = twitterAPI.user_timeline(username)
+        #try:
+            # # rawData = twitterAPI.user_timeline(username)
+            # rawData = tweepy.Cursor(twitterAPI.user_timeline).items(100)
+            # # Find all tweets which have been posted in response to any tweet of the user
+            # i = 0
+            # for status in rawData:
+            #     dictionary = status.__dict__
+            #     i += 1
+            #     if i == 99:
+            #         tweetID = dictionary['id']
+            #         break
+            # print(tweetID)
+            # toString = "to:@" + username
+            # responses = tweepy.Cursor(twitterAPI.search, q=toString, since_id=tweetID).items()
+            # print(responses)
+            # print(tweetID)
 
-        except:
+        username = "@" + username
+        toString = "to:" + username
+        tweets = tweepy.Cursor(twitterAPI.user_timeline, screen_name=username).items(50)
+        # tweetID = tweets[49].id
+        # print(tweetID)
+        # i = 0
+        # for oneTweet in tweets:
+        #     tweetID = oneTweet.id
+        #     lastTweet = oneTweet.created_at
+        #     i += 1
+        # print(tweetID, i)
+        # print(lastTweet)
+        responses = tweepy.Cursor(twitterAPI.search, q=toString).items()
+        # print(len(responses))
+        # i = 0
+        # for response in responses:
+        # #     print(response, "\n\n", i, "\n\n\n")
+        #     i += 1
+        # print(i)
+
+
+
+
+        #except:
             # user not found. return null
-            return
+            #return
 
         allTweets = []
 
-        for status in rawData:
+        for status in tweets:
             dictionary = status.__dict__
 
+            # feedback = getReplyPolarity(dictionary["id"], responses)
+            feedback = random.randint(0, 100)
+            feedbackStr = "% Positive"
+            if feedback == 999:
+                feedback = 0
+                feedbackStr = " Comments"
+            
             tempDict = {
                 "body": dictionary["text"],
                 "retweets": dictionary["retweet_count"],
                 "likes": dictionary["favorite_count"],
                 "date": getDateString(dictionary['created_at']),
                 "id": dictionary["id"],
-                "feedback": random.randint(0, 100),
+                "feedback": feedback,
+                "feedbackStr": feedbackStr,
                 "hashtag": getHashtag(dictionary['text'])
             }
             allTweets.append(tempDict)
+            # if len(allTweets) > 100:
+            #     break
 
         return allTweets
 
